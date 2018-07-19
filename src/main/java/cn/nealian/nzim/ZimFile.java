@@ -14,24 +14,27 @@ public class ZimFile {
 		this.file = new File(path);
 		this.reader = new ZimFileReader(file);
 		this.header = reader.readHeader();
-		this.mimeList = reader.readMimeList(header.getMimeListPos());
+		this.mimeList = reader.readMimeList(header);
 	}
 
 	/* index starts with 0 and it's sorted by url */
-	public DirectoryEntry getEntry(int index) throws IOException {
-		return getEntryByEntryPtr(reader.readEntryPtr(header.getUrlPtrPos(), index));
+	public DirectoryEntry getEntry(int index, boolean redirect) throws IOException {
+		if (index >= 0 && index < getArticleCount()) {
+			return getEntryByEntryPtr(reader.readEntryPtr(header, index), redirect);
+		}
+		return null;
 	}
 
-	public DirectoryEntry getEntry(String url) throws IOException {
-		return getEntry(getEntryIndex(url));
+	public DirectoryEntry getEntry(String url, boolean redirect) throws IOException {
+		return getEntry(getEntryIndex(url), redirect);
 	}
 
-	private int getEntryIndex(String url) {
-		return reader.readEntryIndex(getUrlPtrPos(),url, false);
+	private int getEntryIndex(String url) throws IOException {
+		return reader.readEntryIndex(header, url);
 	}
 
-	private DirectoryEntry getEntryByEntryPtr(long entryPtr) throws IOException {
-		return reader.readEntry(mimeList, getClusterPtrPos(), entryPtr, false);
+	private DirectoryEntry getEntryByEntryPtr(long entryPtr, boolean redirect) throws IOException {
+		return reader.readEntry(header, mimeList, entryPtr, redirect);
 	}
 
 	public List<String> getMimeList() {

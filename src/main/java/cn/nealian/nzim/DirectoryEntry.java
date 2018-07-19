@@ -41,7 +41,9 @@ public abstract class DirectoryEntry {
 	}
 
 	public abstract String getMimeType();
+
 	public abstract InputStream getInputStream();
+
 	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();

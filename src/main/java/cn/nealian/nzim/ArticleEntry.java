@@ -13,15 +13,19 @@ public class ArticleEntry extends DirectoryEntry {
 	protected void setMineType(String mineType) {
 		this.mineType = mineType;
 	}
+
 	public int getBlobSize() {
 		return blobSize;
 	};
+
 	public long getClusterPtrPos() {
 		return clusterPtrPos;
 	}
+
 	protected void setClusterPtrPos(long pos) {
 		this.clusterPtrPos = pos;
 	}
+
 	public int getClusterNumber() {
 		return clusterNumber;
 	}
@@ -50,10 +54,12 @@ public class ArticleEntry extends DirectoryEntry {
 	public String getMimeType() {
 		return mineType;
 	}
+
 	@Override
 	public InputStream getInputStream() {
 		return is;
 	}
+
 	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
@@ -63,6 +69,5 @@ public class ArticleEntry extends DirectoryEntry {
 		sb.append("blobSize:" + blobSize + "\n");
 		return sb.toString();
 	}
-	
 
 }

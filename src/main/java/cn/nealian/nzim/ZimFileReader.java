@@ -11,14 +11,15 @@ import org.tukaani.xz.SingleXZInputStream;
 class ZimFileReader {
 	private File file;
 	private ZimFileHeader header;
+
 	protected ZimFileReader(File file) {
 		this.file = file;
 	}
 
-	protected List<String> readMimeList(long mimeListPos) throws IOException {
+	protected List<String> readMimeList(ZimFileHeader header) throws IOException {
 		List<String> mimeList = new ArrayList<>();
 		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
-		rafe.seek(mimeListPos);
+		rafe.seek(header.getMimeListPos());
 		String mime = null;
 		do {
 			mime = rafe.readString();
@@ -27,7 +28,7 @@ class ZimFileReader {
 		rafe.close();
 		return mimeList;
 	}
-	
+
 	protected ZimFileHeader readHeader() throws IOException {
 		ZimFileHeader header = new ZimFileHeader();
 		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
@@ -49,15 +50,16 @@ class ZimFileReader {
 		return header;
 	}
 
-	protected long readEntryPtr(long urlPtrPos, int index) throws IOException {
+	protected long readEntryPtr(ZimFileHeader header, int index) throws IOException {
 		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
-		rafe.seek(urlPtrPos + 8 * index);
+		rafe.seek(header.getUrlPtrPos() + 8 * index);
 		long entryPtr = rafe.readEightLittleEndianBytesAsLong();
 		rafe.close();
 		return entryPtr;
 	}
 
-	protected DirectoryEntry readEntry(List<String> mimeList, long clusterPtrPos, long entryPtr, boolean ignoreRedirect) throws IOException {
+	protected DirectoryEntry readEntry(ZimFileHeader header, List<String> mimeList, long entryPtr, boolean redirect)
+			throws IOException {
 		DirectoryEntry entry;
 		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
 		rafe.seek(entryPtr);
@@ -65,19 +67,23 @@ class ZimFileReader {
 		rafe.read(); /* ignore parameter len */
 		char namespace = (char) rafe.read();
 		int revision = rafe.readFourLittleEndianBytesAsInt();
-		if(mime == 0xffff) {
+		if (mime == 0xffff) {
 			RedirectEntry rentry = new RedirectEntry();
 			rentry.setRedirectIndex(rafe.readFourLittleEndianBytesAsInt());
+			if (redirect) {
+				rafe.close();
+				return readEntry(header, mimeList, readEntryPtr(header, rentry.getRedirectIndex()), redirect);
+			}
 			entry = rentry;
-		}else if(mime == 0xfffd || mime == 0xfffe) {
+		} else if (mime == 0xfffd || mime == 0xfffe) {
 			LinktargetOrDeletedEntry lentry = new LinktargetOrDeletedEntry();
 			lentry.setType(mime);
 			entry = lentry;
-		}else {
+		} else {
 			ArticleEntry aentry = new ArticleEntry();
 			aentry.setClusterNumber(rafe.readFourLittleEndianBytesAsInt());
 			aentry.setBlobNumber(rafe.readFourLittleEndianBytesAsInt());
-			aentry.setClusterPtrPos(clusterPtrPos);
+			aentry.setClusterPtrPos(header.getClusterPtrPos());
 			aentry.setInputStream(readEntryData(aentry));
 			entry = aentry;
 		}
@@ -89,10 +95,38 @@ class ZimFileReader {
 		return entry;
 	}
 
-	protected int readEntryIndex(long urlPtr,String url, boolean ignoreRedirect) {
-		return 0;
+	protected int readEntryIndex(ZimFileHeader header, String url) throws IOException {
+		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
+		int tail = header.getArticleCount() - 1;
+		int head = 0;
+		int ptr;
+		while (head < tail - 1) {
+			ptr = (head + tail) / 2;
+			rafe.seek(header.getUrlPtrPos() + ptr * 8);
+			long entryPtr = rafe.readEightLittleEndianBytesAsLong();
+			rafe.seek(entryPtr);
+			int mime = rafe.readTwoLittleEndianBytesAsInt();
+			if (mime == 0xffff) {
+				rafe.seek(entryPtr + 12);
+			} else if (mime == 0xfffd || mime == 0xfffe) {
+				rafe.seek(entryPtr + 8);
+			} else {
+				rafe.seek(entryPtr + 16);
+			}
+			int ret = url.compareTo(rafe.readString());
+			if (0 == ret) {
+				rafe.close();
+				return ptr;
+			} else if (0 > ret) {
+				tail = ptr;
+			} else {
+				head = ptr;
+			}
+		}
+		rafe.close();
+		return -1;
 	}
-	
+
 	private InputStream readEntryData(ArticleEntry entry) throws IOException {
 		RandomAccessFileExtern rafe = new RandomAccessFileExtern(file, "r");
 		/* both clusterNumber and blobNumber start with 0 */
@@ -101,31 +135,31 @@ class ZimFileReader {
 		rafe.seek(clusterPos);
 		int a = rafe.read();
 		int OFFSET_SIZE = 4;
-		if((a&0x10) == 0 && header.getMajorVersion()==6) {
+		if ((a & 0x10) == 0 && header.getMajorVersion() == 6) {
 			OFFSET_SIZE = 8;
 		}
-		if (a == 4) {
-			// rafe.skipBytes(4 * (blobNumber - 1));
-			SingleXZInputStream xcis = new SingleXZInputStream(new ZimInputStream(rafe), 4194304);
-			byte[] buff = new byte[OFFSET_SIZE];
-
-			xcis.skip(OFFSET_SIZE * entry.getBlobNumber());/* now pointer points to offset of the blob we want */
-			xcis.read(buff);
-			int blobOffset = rafe.fourLittleEndianBytesToInt(buff);
-			/* now pointer points to offset of the next blob to the blob we want */
-			xcis.read(buff);
-			int nextBlobOffset = rafe.fourLittleEndianBytesToInt(buff);
-
-			/*
-			 * we have already finished 4*(entry.getBlobNumber()+2) bytes of the
-			 * "blobOffset" bytes journey
-			 */
-			xcis.skip(blobOffset - OFFSET_SIZE * (entry.getBlobNumber() + 2));
-			entry.setBlobSize(nextBlobOffset - blobOffset);
-			return xcis;
+		InputStream is = null;
+		if ((a & 0x04) != 0) {
+			is = new SingleXZInputStream(new ZimInputStream(rafe), 4194304);
+		} else {
+			is = new ZimInputStream(rafe);
 		}
-		rafe.close();
-		return null;
+		byte[] buff = new byte[OFFSET_SIZE];
+
+		is.skip(OFFSET_SIZE * entry.getBlobNumber());/* now pointer points to offset of the blob we want */
+		is.read(buff);
+		int blobOffset = rafe.fourLittleEndianBytesToInt(buff);
+		/* now pointer points to offset of the next blob to the blob we want */
+		is.read(buff);
+		int nextBlobOffset = rafe.fourLittleEndianBytesToInt(buff);
+
+		/*
+		 * we have already finished 4*(entry.getBlobNumber()+2) bytes of the
+		 * "blobOffset" bytes journey
+		 */
+		is.skip(blobOffset - OFFSET_SIZE * (entry.getBlobNumber() + 2));
+		entry.setBlobSize(nextBlobOffset - blobOffset);
+		return is;
 	}
 
 	private class ZimInputStream extends InputStream {
