@@ -81,6 +81,7 @@ class ZimFileReader {
 			entry = lentry;
 		} else {
 			ArticleEntry aentry = new ArticleEntry();
+			aentry.setMineType(mimeList.get(mime));
 			aentry.setClusterNumber(rafe.readFourLittleEndianBytesAsInt());
 			aentry.setBlobNumber(rafe.readFourLittleEndianBytesAsInt());
 			aentry.setClusterPtrPos(header.getClusterPtrPos());

@@ -3,6 +3,7 @@ package cn.nealian.nzim;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.Test;
 
 public class ZimTest {
@@ -30,6 +31,14 @@ public class ZimTest {
 	public void testArticleEntry() {
 		try {
 			System.out.println(file.getEntry(file.getMainPage(), false));
+			for(int i = 0; i<file.getArticleCount();i++) {
+				DirectoryEntry entry = file.getEntry(i, false);
+				
+				if(file.getEntry(i, false).getMimeType().contains("javascript")) {
+					System.out.println(file.getEntry(i, false).getUrl());
+					break;
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -60,7 +69,7 @@ public class ZimTest {
 
 	@Test
 	public void testGetEntryByUrl() throws IOException {
-		System.out.println("get entry by url: 正壬醇.html\n" + file.getEntry("正壬醇.html", false));
+		System.out.println("get entry by url: 正壬醇.html\n" + file.getEntry("/j/js_modules/site.js", false));
 	}
 
 }
