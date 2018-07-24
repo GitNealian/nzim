@@ -102,11 +102,14 @@ class ZimFileReader {
 		int head = 0;
 		int ptr;
 		while (head < tail - 1) {
+			System.out.println(head + " " + tail);
 			ptr = (head + tail) / 2;
 			rafe.seek(header.getUrlPtrPos() + ptr * 8);
 			long entryPtr = rafe.readEightLittleEndianBytesAsLong();
 			rafe.seek(entryPtr);
 			int mime = rafe.readTwoLittleEndianBytesAsInt();
+			rafe.skipBytes(1);
+			char namespace = (char) rafe.read();
 			if (mime == 0xffff) {
 				rafe.seek(entryPtr + 12);
 			} else if (mime == 0xfffd || mime == 0xfffe) {
@@ -114,7 +117,9 @@ class ZimFileReader {
 			} else {
 				rafe.seek(entryPtr + 16);
 			}
-			int ret = url.compareTo(rafe.readString());
+			String urlextend = rafe.readString();
+			urlextend = namespace + "/" + urlextend;
+			int ret = url.compareTo(urlextend);
 			if (0 == ret) {
 				rafe.close();
 				return ptr;
