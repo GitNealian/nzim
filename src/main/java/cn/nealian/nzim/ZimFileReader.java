@@ -101,8 +101,8 @@ class ZimFileReader {
 		int tail = header.getArticleCount() - 1;
 		int head = 0;
 		int ptr;
-		while (head < tail - 1) {
-			ptr = (head + tail) / 2;
+		while (head <= tail ) {
+			ptr = head + ((tail - head) >> 1);
 			rafe.seek(header.getUrlPtrPos() + ptr * 8);
 			long entryPtr = rafe.readEightLittleEndianBytesAsLong();
 			rafe.seek(entryPtr);
@@ -123,9 +123,9 @@ class ZimFileReader {
 				rafe.close();
 				return ptr;
 			} else if (0 > ret) {
-				tail = ptr;
+				tail = ptr-1;
 			} else {
-				head = ptr;
+				head = ptr+1;
 			}
 		}
 		rafe.close();

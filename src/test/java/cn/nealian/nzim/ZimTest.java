@@ -9,13 +9,13 @@ public class ZimTest {
 	ZimFile file;
 
 	public ZimTest() throws IOException {
-		file = new ZimFile("/home/neailan/桌面/jkiwix/zims/wikipedia_zh_medicine_nopic.zim");
+		file = new ZimFile("/home/neailan/zims/b.zim");
 	}
 
-	@Test
 	public void testGetEntryData() {
 		try {
-			ArticleEntry entry = (ArticleEntry) file.getEntry(3399, false);
+			System.out.println("layoutPage " + file.getLayoutPage());
+			ArticleEntry entry = (ArticleEntry) file.getEntry("M/Language", false);
 			InputStream is = entry.getInputStream();
 			byte[] buff = new byte[entry.getBlobSize()];
 			is.read(buff);
@@ -26,7 +26,6 @@ public class ZimTest {
 		}
 	}
 
-	@Test
 	public void testArticleEntry() {
 		try {
 			System.out.println(file.getEntry(file.getMainPage(), false));
@@ -41,7 +40,6 @@ public class ZimTest {
 		}
 	}
 
-	@Test
 	public void testRedirectEntry() {
 		try {
 			System.out.println("131");
@@ -51,19 +49,17 @@ public class ZimTest {
 		}
 	}
 
-	@Test
 	public void testGetHeader() {
 		System.out.println("article count: " + file.getArticleCount());
 		System.out.println("uuid: " + file.getUuid());
 	}
 
-	@Test
 	public void testGetMimeList() {
 		file.getMimeList().forEach(mime -> {
 			System.out.println(mime);
 		});
 	}
-
+	@Test
 	public void getAllSortedUrl() {
 		int i = 0;
 		while (i < file.getArticleCount()) {
@@ -78,7 +74,7 @@ public class ZimTest {
 
 	@Test
 	public void testGetEntryByUrl() throws IOException {
-		System.out.println("get entry by url: 正壬醇.html\n" + file.getEntry("-/j/js_modules/site.js", false));
+		System.out.println("get entry by url: 正壬醇.html\n" + file.getEntry("M/Title", true));
 	}
 
 }
