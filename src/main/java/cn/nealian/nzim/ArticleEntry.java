@@ -1,8 +1,10 @@
 package cn.nealian.nzim;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.io.InputStream;
 
-public class ArticleEntry extends DirectoryEntry {
+public class ArticleEntry extends DirectoryEntry implements Closeable{
 	private String mineType;
 	private int clusterNumber;
 	private int blobNumber;
@@ -55,7 +57,6 @@ public class ArticleEntry extends DirectoryEntry {
 		return mineType;
 	}
 
-	@Override
 	public InputStream getInputStream() {
 		return is;
 	}
@@ -68,6 +69,11 @@ public class ArticleEntry extends DirectoryEntry {
 		sb.append("blobNumber: " + blobNumber + "\n");
 		sb.append("blobSize:" + blobSize + "\n");
 		return sb.toString();
+	}
+
+	@Override
+	public void close() throws IOException {
+		is.close();
 	}
 
 }

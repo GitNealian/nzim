@@ -18,10 +18,6 @@ public class RedirectEntry extends DirectoryEntry {
 		return "redirect";
 	}
 
-	@Override
-	public InputStream getInputStream() {
-		return null;
-	}
 
 	@Override
 	public String toString() {

@@ -1,7 +1,5 @@
 package cn.nealian.nzim;
 
-import java.io.InputStream;
-
 public class LinktargetOrDeletedEntry extends DirectoryEntry {
 	public static final int LINKTARGET = 0xfff3;
 	public static final int DELETED = 0xfffd;
@@ -22,11 +20,6 @@ public class LinktargetOrDeletedEntry extends DirectoryEntry {
 		} else {
 			return null;
 		}
-	}
-
-	@Override
-	public InputStream getInputStream() {
-		return null;
 	}
 
 }
